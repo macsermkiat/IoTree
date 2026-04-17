@@ -28,7 +28,8 @@ export default function HomePage() {
 
   const [thresholdInput, setThresholdInput] = useState(threshold);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [isMutating, setIsMutating] = useState(false);
+  const [actionLabel, setActionLabel] = useState<string | null>(null);
 
   const humidityLabel = useMemo(() => `${Math.max(0, Math.min(100, soilMoisture)).toFixed(0)}%`, [soilMoisture]);
 
@@ -36,49 +37,51 @@ export default function HomePage() {
     setThresholdInput(threshold);
   }, [threshold]);
 
+  const runAction = async (label: string, action: () => Promise<void>, fallbackError: string) => {
+    setActionError(null);
+    setActionLabel(label);
+    setIsMutating(true);
+    try {
+      await action();
+    } catch (error) {
+      if (error instanceof Error) {
+        setActionError(error.message);
+      } else {
+        setActionError(fallbackError);
+      }
+    } finally {
+      setIsMutating(false);
+      setActionLabel(null);
+    }
+  };
+
   const handleThresholdSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setActionError(null);
-    startTransition(async () => {
-      try {
-        await writeThreshold(thresholdInput);
-      } catch {
-        setActionError('Could not update moisture threshold. Check Firebase permissions.');
-      }
-    });
+    void runAction(
+      'Saving threshold...',
+      () => writeThreshold(thresholdInput),
+      'Could not update moisture threshold. Check Firebase permissions.'
+    );
   };
 
   const handleToggle = (runner: (value: boolean) => Promise<void>, value: boolean, label: string) => {
-    setActionError(null);
-    startTransition(async () => {
-      try {
-        await runner(value);
-      } catch {
-        setActionError(`Could not update ${label}.`);
-      }
-    });
+    void runAction(`Updating ${label}...`, () => runner(value), `Could not update ${label}.`);
   };
 
   const handleSmartChannel = (index: number) => {
-    setActionError(null);
-    startTransition(async () => {
-      try {
-        await toggleSmartChannel(index);
-      } catch {
-        setActionError(`Could not update SmartHome channel ${index + 1}.`);
-      }
-    });
+    void runAction(
+      `Updating SmartHome channel ${index + 1}...`,
+      () => toggleSmartChannel(index),
+      `Could not update SmartHome channel ${index + 1}.`
+    );
   };
 
   const handleInitialize = () => {
-    setActionError(null);
-    startTransition(async () => {
-      try {
-        await initializeDefaults();
-      } catch {
-        setActionError('Could not initialize Firebase defaults.');
-      }
-    });
+    void runAction(
+      'Initializing Firebase paths...',
+      () => initializeDefaults(),
+      'Could not initialize Firebase defaults.'
+    );
   };
 
   return (
@@ -124,10 +127,10 @@ export default function HomePage() {
             <p className="text-xs text-slate-500">Current threshold in DB: {threshold}%</p>
             <button
               type="submit"
-              disabled={isPending}
+              disabled={isMutating}
               className="w-full rounded-xl bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isPending ? 'Saving...' : 'Save Threshold'}
+              {isMutating ? actionLabel ?? 'Working...' : 'Save Threshold'}
             </button>
           </form>
         </DashboardCard>

@@ -128,6 +128,9 @@ If the dashboard loads but cannot read/write Firebase values (for example LED to
 
 4. **Firmware credentials**
    - ESP8266 Firebase user/project and web app Firebase project must be the same project.
+5. **Requests hanging / UI stuck on initializing**
+   - The dashboard now times out Firebase requests after ~10 seconds and shows the timeout message.
+   - If you see timeout errors, check network access, Firebase rules, and auth method.
 
 
 ## Quick Verification (5 minutes)
