@@ -13,9 +13,9 @@
 #define USER_PASSWORD "YOUR_FIREBASE_USER_PASSWORD"
 
 const String PLANT_ID = "plant1";
-// If your existing Firebase tree is `plant1/...` (without `/plants/`),
-// keep this as "/plant1". Change to "/plants/plant1" if needed.
-const String FIREBASE_BASE_PATH = "/plant1";
+// Set this to your exact Firebase root path used by ESP8266/webapp.
+// Example: "/plants/plant" or "/plants/plant1" or "/plant1".
+const String FIREBASE_BASE_PATH = "/plants/plant";
 
 // -------------------- Firebase --------------------
 FirebaseConfig firebaseConfig;

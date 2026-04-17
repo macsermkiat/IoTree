@@ -19,12 +19,13 @@ interface PathConfig {
 }
 
 const DEFAULT_PATHS: PathConfig = {
-  soilPath: '/plants/plant1/sensors/soilMoisture',
-  controlRoot: '/plants/plant1/control',
+  soilPath: '/plants/plant/sensors/soilMoisture',
+  controlRoot: '/plants/plant/control',
 };
 
 const CANDIDATE_PATHS: PathConfig[] = [
   DEFAULT_PATHS,
+  { soilPath: '/plants/plant1/sensors/soilMoisture', controlRoot: '/plants/plant1/control' },
   { soilPath: '/Plant1/Sensor/soilMoisture', controlRoot: '/Plant1/control' },
   { soilPath: '/Plant1/Sensor', controlRoot: '/Plant1/control' },
   { soilPath: '/Plant1/sensors/soilMoisture', controlRoot: '/Plant1/control' },

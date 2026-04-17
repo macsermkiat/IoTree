@@ -62,6 +62,7 @@ Expected values in Realtime Database:
 Legacy compatibility:
 
 - If your existing tree is `Plant1/Sensor` (capitalized/singular), the web app auto-detects it and maps controls to `Plant1/control`.
+- If your existing tree is `/plants/plant/...`, the web app auto-detects and uses `/plants/plant/control`.
 - If no control node exists yet, use **Initialize Firebase Paths** in the dashboard to create default control values.
 
 Bit positions for SmartHome channels:
@@ -105,15 +106,15 @@ A compatible sketch is included at:
 
 It is aligned with this web app contract:
 
-- Writes moisture percentage number to `/plants/plant1/sensors/soilMoisture`
-- Reads threshold number from `/plants/plant1/control/value`
-- Reads `"ON" | "OFF"` from `/plants/plant1/control/LED`
-- Reads `"ON" | "OFF"` from `/plants/plant1/control/motor`
-- Reads 6-channel bitmask integer from `/plants/plant1/control/SMhome`
+- Writes moisture percentage number to `/plants/plant/sensors/soilMoisture`
+- Reads threshold number from `/plants/plant/control/value`
+- Reads `"ON" | "OFF"` from `/plants/plant/control/LED`
+- Reads `"ON" | "OFF"` from `/plants/plant/control/motor`
+- Reads 6-channel bitmask integer from `/plants/plant/control/SMhome`
 
 Firmware note:
 
-- The included firmware currently defaults to `FIREBASE_BASE_PATH = "/plant1"` so it matches setups where data appears under `plant1/sensors/...`.
+- The included firmware currently defaults to `FIREBASE_BASE_PATH = "/plants/plant"` to match setups using `/plants/plant/...`.
 - It auto-creates missing control keys on boot (`value`, `LED`, `motor`, `SMhome`) if they are absent.
 
 > Note: Output polarity is configurable in firmware using:
