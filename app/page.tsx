@@ -23,6 +23,7 @@ export default function HomePage() {
     writeLed,
     writeMotor,
     toggleSmartChannel,
+    initializeDefaults,
   } = usePlantDashboard();
 
   const [thresholdInput, setThresholdInput] = useState(threshold);
@@ -65,6 +66,17 @@ export default function HomePage() {
         await toggleSmartChannel(index);
       } catch {
         setActionError(`Could not update SmartHome channel ${index + 1}.`);
+      }
+    });
+  };
+
+  const handleInitialize = () => {
+    setActionError(null);
+    startTransition(async () => {
+      try {
+        await initializeDefaults();
+      } catch {
+        setActionError('Could not initialize Firebase defaults.');
       }
     });
   };
@@ -149,6 +161,35 @@ export default function HomePage() {
                 disabled={isPending || loading}
               />
             ))}
+          </div>
+        </DashboardCard>
+
+        <DashboardCard title="Connection / Debug" subtitle="Quick checks if dashboard seems empty">
+          <div className="space-y-3 text-sm text-slate-600">
+            <p>
+              Auth: <span className="font-semibold">{isAuthenticated ? 'Connected' : 'Not connected'}</span>
+            </p>
+            <p>
+              Soil Moisture (raw): <span className="font-semibold">{soilMoisture}</span>
+            </p>
+            <p>
+              LED command (raw): <span className="font-semibold">{led ? 'ON' : 'OFF'}</span>
+            </p>
+            <p>
+              Motor command (raw): <span className="font-semibold">{motor ? 'ON' : 'OFF'}</span>
+            </p>
+            <button
+              type="button"
+              onClick={handleInitialize}
+              disabled={isPending}
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isPending ? 'Initializing...' : 'Initialize Firebase Paths'}
+            </button>
+            <p className="text-xs text-slate-500">
+              If this is your first run, click initialize once, then toggle LED/Pump and confirm values
+              change in Firebase console.
+            </p>
           </div>
         </DashboardCard>
       </div>

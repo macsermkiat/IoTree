@@ -7,7 +7,7 @@ import {
   signInAnonymously,
   signInWithEmailAndPassword,
 } from 'firebase/auth';
-import { onValue, ref, set } from 'firebase/database';
+import { get, onValue, ref, set, update } from 'firebase/database';
 import { auth, db } from '@/lib/firebase';
 
 const ROOT_PATH = '/plants/plant1';
@@ -187,6 +187,33 @@ export function usePlantDashboard() {
     await set(ref(db, `${ROOT_PATH}/control/SMhome`), Math.max(0, Math.floor(mask)));
   }, []);
 
+
+  const initializeDefaults = useCallback(async () => {
+    await ensureAuthenticated();
+
+    const controlRef = ref(db, `${ROOT_PATH}/control`);
+    const sensorsRef = ref(db, `${ROOT_PATH}/sensors`);
+
+    const [controlSnapshot, sensorSnapshot] = await Promise.all([get(controlRef), get(sensorsRef)]);
+
+    const control = (controlSnapshot.val() ?? {}) as Record<string, unknown>;
+    const sensors = (sensorSnapshot.val() ?? {}) as Record<string, unknown>;
+
+    const controlPatch: Record<string, unknown> = {};
+    if (control.value === undefined || control.value === null) controlPatch.value = 40;
+    if (typeof control.LED !== 'string') controlPatch.LED = 'OFF';
+    if (typeof control.motor !== 'string') controlPatch.motor = 'OFF';
+    if (typeof control.SMhome !== 'number') controlPatch.SMhome = 0;
+
+    if (Object.keys(controlPatch).length) {
+      await update(controlRef, controlPatch);
+    }
+
+    if (sensors.soilMoisture === undefined || sensors.soilMoisture === null) {
+      await update(sensorsRef, { soilMoisture: 0 });
+    }
+  }, []);
+
   const smartChannels = useMemo(
     () => Array.from({ length: 6 }, (_, index) => Boolean(state.smhomeMask & (1 << index))),
     [state.smhomeMask]
@@ -211,5 +238,6 @@ export function usePlantDashboard() {
     writeLed,
     writeMotor,
     toggleSmartChannel,
+    initializeDefaults,
   };
 }

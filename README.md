@@ -128,3 +128,20 @@ If the dashboard loads but cannot read/write Firebase values (for example LED to
 
 4. **Firmware credentials**
    - ESP8266 Firebase user/project and web app Firebase project must be the same project.
+
+
+## Quick Verification (5 minutes)
+
+1. Power on ESP8266 and open Serial Monitor at `115200`.
+2. Open Firebase Realtime Database and watch `/plants/plant1` live.
+3. Open web dashboard and confirm header shows `Firebase session: authenticated`.
+4. In dashboard `Connection / Debug` card, click **Initialize Firebase Paths** once.
+5. Toggle **LED Grow Light** ON/OFF in dashboard:
+   - Firebase `/plants/plant1/control/LED` should change immediately.
+   - ESP8266 relay on `LED_PIN` should switch.
+6. Toggle **Water Pump** ON/OFF:
+   - Firebase `/plants/plant1/control/motor` should change.
+   - ESP8266 relay on `MOTOR_PIN` should switch.
+7. Confirm soil moisture card updates every ~10 seconds from firmware writes.
+
+If step 3 fails (not authenticated), re-check `.env.local` auth variables and RTDB rules.
