@@ -59,6 +59,11 @@ Expected values in Realtime Database:
 - `motor`: string `"ON"` or `"OFF"`
 - `SMhome`: integer bitmask for 6 channels
 
+Legacy compatibility:
+
+- If your existing tree is `Plant1/Sensor` (capitalized/singular), the web app auto-detects it and maps controls to `Plant1/control`.
+- If no control node exists yet, use **Initialize Firebase Paths** in the dashboard to create default control values.
+
 Bit positions for SmartHome channels:
 
 - Channel 1 -> bit 0 (`1 << 0`)

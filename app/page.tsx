@@ -19,6 +19,8 @@ export default function HomePage() {
     lastUpdated,
     smartChannels,
     isAuthenticated,
+    detectedSoilPath,
+    detectedControlRoot,
     writeThreshold,
     writeLed,
     writeMotor,
@@ -180,6 +182,12 @@ export default function HomePage() {
             </p>
             <p>
               Motor command (raw): <span className="font-semibold">{motor ? 'ON' : 'OFF'}</span>
+            </p>
+            <p>
+              Soil path: <span className="font-semibold break-all">{detectedSoilPath}</span>
+            </p>
+            <p>
+              Control path: <span className="font-semibold break-all">{detectedControlRoot}</span>
             </p>
             <button
               type="button"

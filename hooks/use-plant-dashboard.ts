@@ -11,8 +11,25 @@ import {
 import { Database, get, onValue, ref, set, update } from 'firebase/database';
 import { getFirebaseServices } from '@/lib/firebase';
 
-const ROOT_PATH = '/plants/plant1';
 const REQUEST_TIMEOUT_MS = 10000;
+
+interface PathConfig {
+  soilPath: string;
+  controlRoot: string;
+}
+
+const DEFAULT_PATHS: PathConfig = {
+  soilPath: '/plants/plant1/sensors/soilMoisture',
+  controlRoot: '/plants/plant1/control',
+};
+
+const CANDIDATE_PATHS: PathConfig[] = [
+  DEFAULT_PATHS,
+  { soilPath: '/Plant1/Sensor/soilMoisture', controlRoot: '/Plant1/control' },
+  { soilPath: '/Plant1/Sensor', controlRoot: '/Plant1/control' },
+  { soilPath: '/Plant1/sensors/soilMoisture', controlRoot: '/Plant1/control' },
+  { soilPath: '/plant1/sensors/soilMoisture', controlRoot: '/plant1/control' },
+];
 
 function withTimeout<T>(promise: Promise<T>, label: string, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
   return Promise.race([
@@ -74,6 +91,17 @@ async function ensureAuthenticated(auth: Auth) {
   }
 }
 
+async function detectPaths(db: Database): Promise<PathConfig> {
+  for (const candidate of CANDIDATE_PATHS) {
+    const soilSnapshot = await withTimeout(get(ref(db, candidate.soilPath)), `Read ${candidate.soilPath}`);
+    if (soilSnapshot.exists()) {
+      return candidate;
+    }
+  }
+
+  return DEFAULT_PATHS;
+}
+
 export function usePlantDashboard() {
   const [state, setState] = useState<DashboardState>(initialState);
   const [loading, setLoading] = useState(true);
@@ -82,6 +110,7 @@ export function usePlantDashboard() {
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [db, setDb] = useState<Database | null>(null);
   const [auth, setAuth] = useState<Auth | null>(null);
+  const [paths, setPaths] = useState<PathConfig>(DEFAULT_PATHS);
 
   useEffect(() => {
     try {
@@ -123,12 +152,34 @@ export function usePlantDashboard() {
   useEffect(() => {
     if (!authUser || !db) return;
 
+    let active = true;
+
+    detectPaths(db)
+      .then((detected) => {
+        if (!active) return;
+        setPaths(detected);
+      })
+      .catch(() => {
+        if (!active) return;
+        setPaths(DEFAULT_PATHS);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [authUser, db]);
+
+  useEffect(() => {
+    if (!authUser || !db) return;
+
+    const control = (name: string) => `${paths.controlRoot}/${name}`;
+
     const refs = {
-      soilMoisture: ref(db, `${ROOT_PATH}/sensors/soilMoisture`),
-      threshold: ref(db, `${ROOT_PATH}/control/value`),
-      led: ref(db, `${ROOT_PATH}/control/LED`),
-      motor: ref(db, `${ROOT_PATH}/control/motor`),
-      smhomeMask: ref(db, `${ROOT_PATH}/control/SMhome`),
+      soilMoisture: ref(db, paths.soilPath),
+      threshold: ref(db, control('value')),
+      led: ref(db, control('LED')),
+      motor: ref(db, control('motor')),
+      smhomeMask: ref(db, control('SMhome')),
     };
 
     const markUpdated = () => {
@@ -189,25 +240,25 @@ export function usePlantDashboard() {
     return () => {
       unsubscribers.forEach((unsubscribe) => unsubscribe());
     };
-  }, [authUser, db]);
+  }, [authUser, db, paths]);
 
   const writeThreshold = useCallback(
     async (threshold: number) => {
       if (!auth || !db) throw new Error('Firebase is not initialized yet.');
       await ensureAuthenticated(auth);
       const safeValue = Math.max(0, Math.min(100, Math.round(threshold)));
-      await withTimeout(set(ref(db, `${ROOT_PATH}/control/value`), safeValue), 'Write control/value');
+      await withTimeout(set(ref(db, `${paths.controlRoot}/value`), safeValue), 'Write control/value');
     },
-    [auth, db]
+    [auth, db, paths]
   );
 
   const writeLed = useCallback(
     async (enabled: boolean) => {
       if (!auth || !db) throw new Error('Firebase is not initialized yet.');
       await ensureAuthenticated(auth);
-      await withTimeout(set(ref(db, `${ROOT_PATH}/control/LED`), enabled ? 'ON' : 'OFF'), 'Write control/LED');
+      await withTimeout(set(ref(db, `${paths.controlRoot}/LED`), enabled ? 'ON' : 'OFF'), 'Write control/LED');
     },
-    [auth, db]
+    [auth, db, paths]
   );
 
   const writeMotor = useCallback(
@@ -215,11 +266,11 @@ export function usePlantDashboard() {
       if (!auth || !db) throw new Error('Firebase is not initialized yet.');
       await ensureAuthenticated(auth);
       await withTimeout(
-        set(ref(db, `${ROOT_PATH}/control/motor`), enabled ? 'ON' : 'OFF'),
+        set(ref(db, `${paths.controlRoot}/motor`), enabled ? 'ON' : 'OFF'),
         'Write control/motor'
       );
     },
-    [auth, db]
+    [auth, db, paths]
   );
 
   const writeSmartHomeMask = useCallback(
@@ -227,11 +278,11 @@ export function usePlantDashboard() {
       if (!auth || !db) throw new Error('Firebase is not initialized yet.');
       await ensureAuthenticated(auth);
       await withTimeout(
-        set(ref(db, `${ROOT_PATH}/control/SMhome`), Math.max(0, Math.floor(mask))),
+        set(ref(db, `${paths.controlRoot}/SMhome`), Math.max(0, Math.floor(mask))),
         'Write control/SMhome'
       );
     },
-    [auth, db]
+    [auth, db, paths]
   );
 
   const initializeDefaults = useCallback(async () => {
@@ -239,16 +290,10 @@ export function usePlantDashboard() {
 
     await ensureAuthenticated(auth);
 
-    const controlRef = ref(db, `${ROOT_PATH}/control`);
-    const sensorsRef = ref(db, `${ROOT_PATH}/sensors`);
+    const controlRef = ref(db, paths.controlRoot);
 
-    const [controlSnapshot, sensorSnapshot] = await Promise.all([
-      withTimeout(get(controlRef), 'Read /control'),
-      withTimeout(get(sensorsRef), 'Read /sensors'),
-    ]);
-
+    const controlSnapshot = await withTimeout(get(controlRef), `Read ${paths.controlRoot}`);
     const control = (controlSnapshot.val() ?? {}) as Record<string, unknown>;
-    const sensors = (sensorSnapshot.val() ?? {}) as Record<string, unknown>;
 
     const controlPatch: Record<string, unknown> = {};
     if (control.value === undefined || control.value === null) controlPatch.value = 40;
@@ -257,13 +302,15 @@ export function usePlantDashboard() {
     if (typeof control.SMhome !== 'number') controlPatch.SMhome = 0;
 
     if (Object.keys(controlPatch).length) {
-      await withTimeout(update(controlRef, controlPatch), 'Update /control defaults');
+      await withTimeout(update(controlRef, controlPatch), `Update ${paths.controlRoot} defaults`);
     }
 
-    if (sensors.soilMoisture === undefined || sensors.soilMoisture === null) {
-      await withTimeout(update(sensorsRef, { soilMoisture: 0 }), 'Update /sensors defaults');
+    const soilRef = ref(db, paths.soilPath);
+    const soilSnap = await withTimeout(get(soilRef), `Read ${paths.soilPath}`);
+    if (!soilSnap.exists()) {
+      await withTimeout(set(soilRef, 0), `Create ${paths.soilPath}`);
     }
-  }, [auth, db]);
+  }, [auth, db, paths]);
 
   const smartChannels = useMemo(
     () => Array.from({ length: 6 }, (_, index) => Boolean(state.smhomeMask & (1 << index))),
@@ -284,6 +331,8 @@ export function usePlantDashboard() {
     error,
     lastUpdated,
     isAuthenticated: Boolean(authUser),
+    detectedSoilPath: paths.soilPath,
+    detectedControlRoot: paths.controlRoot,
     smartChannels,
     writeThreshold,
     writeLed,
