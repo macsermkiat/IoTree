@@ -80,3 +80,30 @@ Bit positions for SmartHome channels:
 
 - This v1 uses only Firebase client SDK (no backend API).
 - Ensure Firebase Realtime Database rules allow your intended read/write access for development.
+
+## Vercel Deployment
+
+1. Import the repository in Vercel.
+2. Keep **Framework Preset = Next.js** (do not deploy as a generic static app).
+3. Add all `NEXT_PUBLIC_FIREBASE_*` environment variables from `.env.local.example`.
+4. Build command is `npm run build`.
+5. Do **not** set Output Directory to `public`; Next.js deploys using `.next` output handled by the Next.js runtime.
+
+This repo includes `vercel.json` to force Next.js framework detection and avoid incorrect static output-directory checks.
+
+
+## ESP8266 Firmware (for this dashboard)
+
+A compatible sketch is included at:
+
+- `firmware/esp8266_iotree.ino`
+
+It is aligned with this web app contract:
+
+- Writes moisture percentage number to `/plants/plant1/sensors/soilMoisture`
+- Reads threshold number from `/plants/plant1/control/value`
+- Reads `"ON" | "OFF"` from `/plants/plant1/control/LED`
+- Reads `"ON" | "OFF"` from `/plants/plant1/control/motor`
+- Reads 6-channel bitmask integer from `/plants/plant1/control/SMhome`
+
+> Note: The sketch assumes active-low relay modules (LOW = ON, HIGH = OFF).

@@ -6,6 +6,21 @@ import { db } from '@/lib/firebase';
 
 const ROOT_PATH = '/plants/plant1';
 
+function parseSoilMoistureValue(raw: unknown): number {
+  if (typeof raw === 'number') return raw;
+  if (typeof raw === 'string') {
+    const parsed = Number(raw);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+
+  if (raw && typeof raw === 'object' && 'value' in raw) {
+    const parsed = Number((raw as { value: unknown }).value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+
+  return 0;
+}
+
 interface DashboardState {
   soilMoisture: number;
   threshold: number;
@@ -47,7 +62,7 @@ export function usePlantDashboard() {
       onValue(
         refs.soilMoisture,
         (snapshot) => {
-          const value = Number(snapshot.val() ?? 0);
+          const value = parseSoilMoistureValue(snapshot.val());
           setState((prev) => ({ ...prev, soilMoisture: Number.isNaN(value) ? 0 : value }));
           markUpdated();
         },
