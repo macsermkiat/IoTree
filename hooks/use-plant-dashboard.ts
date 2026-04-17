@@ -11,16 +11,6 @@ import { get, onValue, ref, set, update } from 'firebase/database';
 import { auth, db } from '@/lib/firebase';
 
 const ROOT_PATH = '/plants/plant1';
-const REQUEST_TIMEOUT_MS = 10000;
-
-function withTimeout<T>(promise: Promise<T>, label: string, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs)
-    ),
-  ]);
-}
 
 function parseSoilMoistureValue(raw: unknown): number {
   if (typeof raw === 'number') return raw;
@@ -60,11 +50,11 @@ async function authenticateClient() {
   const password = process.env.NEXT_PUBLIC_FIREBASE_AUTH_PASSWORD;
 
   if (email && password) {
-    await withTimeout(signInWithEmailAndPassword(auth, email, password), 'Firebase email sign-in');
+    await signInWithEmailAndPassword(auth, email, password);
     return;
   }
 
-  await withTimeout(signInAnonymously(auth), 'Firebase anonymous sign-in');
+  await signInAnonymously(auth);
 }
 
 
@@ -179,28 +169,22 @@ export function usePlantDashboard() {
   const writeThreshold = useCallback(async (threshold: number) => {
     await ensureAuthenticated();
     const safeValue = Math.max(0, Math.min(100, Math.round(threshold)));
-    await withTimeout(set(ref(db, `${ROOT_PATH}/control/value`), safeValue), 'Write control/value');
+    await set(ref(db, `${ROOT_PATH}/control/value`), safeValue);
   }, []);
 
   const writeLed = useCallback(async (enabled: boolean) => {
     await ensureAuthenticated();
-    await withTimeout(set(ref(db, `${ROOT_PATH}/control/LED`), enabled ? 'ON' : 'OFF'), 'Write control/LED');
+    await set(ref(db, `${ROOT_PATH}/control/LED`), enabled ? 'ON' : 'OFF');
   }, []);
 
   const writeMotor = useCallback(async (enabled: boolean) => {
     await ensureAuthenticated();
-    await withTimeout(
-      set(ref(db, `${ROOT_PATH}/control/motor`), enabled ? 'ON' : 'OFF'),
-      'Write control/motor'
-    );
+    await set(ref(db, `${ROOT_PATH}/control/motor`), enabled ? 'ON' : 'OFF');
   }, []);
 
   const writeSmartHomeMask = useCallback(async (mask: number) => {
     await ensureAuthenticated();
-    await withTimeout(
-      set(ref(db, `${ROOT_PATH}/control/SMhome`), Math.max(0, Math.floor(mask))),
-      'Write control/SMhome'
-    );
+    await set(ref(db, `${ROOT_PATH}/control/SMhome`), Math.max(0, Math.floor(mask)));
   }, []);
 
 
@@ -210,10 +194,7 @@ export function usePlantDashboard() {
     const controlRef = ref(db, `${ROOT_PATH}/control`);
     const sensorsRef = ref(db, `${ROOT_PATH}/sensors`);
 
-    const [controlSnapshot, sensorSnapshot] = await Promise.all([
-      withTimeout(get(controlRef), 'Read /control'),
-      withTimeout(get(sensorsRef), 'Read /sensors'),
-    ]);
+    const [controlSnapshot, sensorSnapshot] = await Promise.all([get(controlRef), get(sensorsRef)]);
 
     const control = (controlSnapshot.val() ?? {}) as Record<string, unknown>;
     const sensors = (sensorSnapshot.val() ?? {}) as Record<string, unknown>;
@@ -225,11 +206,11 @@ export function usePlantDashboard() {
     if (typeof control.SMhome !== 'number') controlPatch.SMhome = 0;
 
     if (Object.keys(controlPatch).length) {
-      await withTimeout(update(controlRef, controlPatch), 'Update /control defaults');
+      await update(controlRef, controlPatch);
     }
 
     if (sensors.soilMoisture === undefined || sensors.soilMoisture === null) {
-      await withTimeout(update(sensorsRef, { soilMoisture: 0 }), 'Update /sensors defaults');
+      await update(sensorsRef, { soilMoisture: 0 });
     }
   }, []);
 
