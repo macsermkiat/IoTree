@@ -38,7 +38,7 @@ FirebaseData fbWrite;
 // Set to true if ON state should drive pin LOW (active-low module).
 // Set to false if ON state should drive pin HIGH (active-high module).
 const bool MOTOR_ACTIVE_LOW = true;
-const bool LED_ACTIVE_LOW = false;   // Common fix when LED driver is active-high.
+const bool LED_ACTIVE_LOW = true;   // Common fix when LED driver is active-high.
 const bool CH_ACTIVE_LOW = true;
 
 // -------------------- Time --------------------
