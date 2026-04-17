@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState, useTransition } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { DashboardCard } from '@/components/dashboard-card';
 import { ErrorPanel, LoadingPanel } from '@/components/state-panels';
 import { ProgressBar } from '@/components/progress-bar';
@@ -19,6 +19,8 @@ export default function HomePage() {
     lastUpdated,
     smartChannels,
     isAuthenticated,
+    detectedSoilPath,
+    detectedControlRoot,
     writeThreshold,
     writeLed,
     writeMotor,
@@ -140,7 +142,7 @@ export default function HomePage() {
             label="Pump Power"
             checked={motor}
             onChange={(nextValue) => handleToggle(writeMotor, nextValue, 'water pump')}
-            disabled={isPending || loading}
+            disabled={isMutating || loading}
           />
         </DashboardCard>
 
@@ -149,7 +151,7 @@ export default function HomePage() {
             label="Grow Light"
             checked={led}
             onChange={(nextValue) => handleToggle(writeLed, nextValue, 'LED grow light')}
-            disabled={isPending || loading}
+            disabled={isMutating || loading}
           />
         </DashboardCard>
 
@@ -161,7 +163,7 @@ export default function HomePage() {
                 label={`Channel ${index + 1}`}
                 checked={enabled}
                 onChange={() => handleSmartChannel(index)}
-                disabled={isPending || loading}
+                disabled={isMutating || loading}
               />
             ))}
           </div>
@@ -181,13 +183,19 @@ export default function HomePage() {
             <p>
               Motor command (raw): <span className="font-semibold">{motor ? 'ON' : 'OFF'}</span>
             </p>
+            <p>
+              Soil path: <span className="font-semibold break-all">{detectedSoilPath}</span>
+            </p>
+            <p>
+              Control path: <span className="font-semibold break-all">{detectedControlRoot}</span>
+            </p>
             <button
               type="button"
               onClick={handleInitialize}
-              disabled={isPending}
+              disabled={isMutating}
               className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isPending ? 'Initializing...' : 'Initialize Firebase Paths'}
+              {isMutating ? actionLabel ?? 'Working...' : 'Initialize Firebase Paths'}
             </button>
             <p className="text-xs text-slate-500">
               If this is your first run, click initialize once, then toggle LED/Pump and confirm values

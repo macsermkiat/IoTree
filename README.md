@@ -59,6 +59,13 @@ Expected values in Realtime Database:
 - `motor`: string `"ON"` or `"OFF"`
 - `SMhome`: integer bitmask for 6 channels
 
+Legacy compatibility:
+
+- If your existing tree is `Plant1/Sensor` (capitalized/singular), the web app auto-detects it and maps controls to `Plant1/control`.
+- If your existing tree uses `Sensor`/`Control` capitalized node names, the web app auto-detects that casing and writes to the matching control node.
+- If your existing tree is `/plants/plant/...`, the web app auto-detects and uses `/plants/plant/control`.
+- If no control node exists yet, use **Initialize Firebase Paths** in the dashboard to create default control values.
+
 Bit positions for SmartHome channels:
 
 - Channel 1 -> bit 0 (`1 << 0`)
@@ -100,13 +107,20 @@ A compatible sketch is included at:
 
 It is aligned with this web app contract:
 
-- Writes moisture percentage number to `/plants/plant1/sensors/soilMoisture`
-- Reads threshold number from `/plants/plant1/control/value`
-- Reads `"ON" | "OFF"` from `/plants/plant1/control/LED`
-- Reads `"ON" | "OFF"` from `/plants/plant1/control/motor`
-- Reads 6-channel bitmask integer from `/plants/plant1/control/SMhome`
+- Writes moisture percentage number to `/plants/plant/sensors/soilMoisture`
+- Reads threshold number from `/plants/plant/control/value`
+- Reads `"ON" | "OFF"` from `/plants/plant/control/LED`
+- Reads `"ON" | "OFF"` from `/plants/plant/control/motor`
+- Reads 6-channel bitmask integer from `/plants/plant/control/SMhome`
 
-> Note: The sketch assumes active-low relay modules (LOW = ON, HIGH = OFF).
+Firmware note:
+
+- The included firmware currently defaults to `FIREBASE_BASE_PATH = "/plants/plant"` to match setups using `/plants/plant/...`.
+- It auto-creates missing control keys on boot (`value`, `LED`, `motor`, `SMhome`) if they are absent.
+
+> Note: Output polarity is configurable in firmware using:
+> `MOTOR_ACTIVE_LOW`, `LED_ACTIVE_LOW`, and `CH_ACTIVE_LOW`.
+> If dashboard toggle changes Firebase but hardware does not switch, check these flags first.
 
 
 ## Troubleshooting: Dashboard not receiving data / controls not working
@@ -131,6 +145,13 @@ If the dashboard loads but cannot read/write Firebase values (for example LED to
 5. **Requests hanging / UI stuck on initializing**
    - The dashboard now times out Firebase requests after ~10 seconds and shows the timeout message.
    - If you see timeout errors, check network access, Firebase rules, and auth method.
+6. **LED toggle updates in Firebase but LED stays OFF**
+   - Verify `LED_PIN` wiring and common ground.
+   - In firmware, set `LED_ACTIVE_LOW` correctly for your driver board.
+   - If using built-in ESP8266 LED, logic is often active-low.
+7. **Only `plant1/sensors/*` keeps updating repeatedly**
+   - This is expected for live telemetry (`soilMoisture` + timestamp every interval).
+   - If `control` is missing, reboot ESP8266 once after flashing latest firmware; it now auto-creates control keys.
 
 
 ## Quick Verification (5 minutes)

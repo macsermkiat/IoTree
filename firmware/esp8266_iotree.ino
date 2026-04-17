@@ -13,6 +13,9 @@
 #define USER_PASSWORD "YOUR_FIREBASE_USER_PASSWORD"
 
 const String PLANT_ID = "plant1";
+// Set this to your exact Firebase root path used by ESP8266/webapp.
+// Example: "/plants/plant" or "/plants/plant1" or "/plant1".
+const String FIREBASE_BASE_PATH = "/plants/plant";
 
 // -------------------- Firebase --------------------
 FirebaseConfig firebaseConfig;
@@ -31,6 +34,13 @@ FirebaseData fbWrite;
 #define CH5_PIN D7
 #define CH6_PIN D8
 
+// -------------------- Output Polarity --------------------
+// Set to true if ON state should drive pin LOW (active-low module).
+// Set to false if ON state should drive pin HIGH (active-high module).
+const bool MOTOR_ACTIVE_LOW = true;
+const bool LED_ACTIVE_LOW = true;   // Common fix when LED driver is active-high.
+const bool CH_ACTIVE_LOW = true;
+
 // -------------------- Time --------------------
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", 0, 60000);
@@ -47,22 +57,25 @@ String ledCmd = "OFF";
 String motorCmd = "OFF";
 int smHomeMask = 0;
 
-const String BASE_PATH = "/plants/" + PLANT_ID;
+const String BASE_PATH = FIREBASE_BASE_PATH;
 
-// Active-low relay helper
-void relayWrite(uint8_t pin, bool on) {
-  digitalWrite(pin, on ? LOW : HIGH);
+void outputWrite(uint8_t pin, bool on, bool activeLow) {
+  if (activeLow) {
+    digitalWrite(pin, on ? LOW : HIGH);
+  } else {
+    digitalWrite(pin, on ? HIGH : LOW);
+  }
 }
 
 void setAllRelaysOff() {
-  relayWrite(MOTOR_PIN, false);
-  relayWrite(LED_PIN, false);
-  relayWrite(CH1_PIN, false);
-  relayWrite(CH2_PIN, false);
-  relayWrite(CH3_PIN, false);
-  relayWrite(CH4_PIN, false);
-  relayWrite(CH5_PIN, false);
-  relayWrite(CH6_PIN, false);
+  outputWrite(MOTOR_PIN, false, MOTOR_ACTIVE_LOW);
+  outputWrite(LED_PIN, false, LED_ACTIVE_LOW);
+  outputWrite(CH1_PIN, false, CH_ACTIVE_LOW);
+  outputWrite(CH2_PIN, false, CH_ACTIVE_LOW);
+  outputWrite(CH3_PIN, false, CH_ACTIVE_LOW);
+  outputWrite(CH4_PIN, false, CH_ACTIVE_LOW);
+  outputWrite(CH5_PIN, false, CH_ACTIVE_LOW);
+  outputWrite(CH6_PIN, false, CH_ACTIVE_LOW);
 }
 
 float readMoisturePercent() {
@@ -125,32 +138,56 @@ void readSmhomeMask() {
   }
 }
 
+void ensureControlDefaults() {
+  String controlRoot = BASE_PATH + "/control";
+  String pathValue = controlRoot + "/value";
+  String pathLed = controlRoot + "/LED";
+  String pathMotor = controlRoot + "/motor";
+  String pathSmhome = controlRoot + "/SMhome";
+
+  if (!Firebase.getFloat(fbRead, pathValue)) {
+    Firebase.setFloat(fbWrite, pathValue, 40);
+  }
+
+  if (!Firebase.getString(fbRead, pathLed)) {
+    Firebase.setString(fbWrite, pathLed, "OFF");
+  }
+
+  if (!Firebase.getString(fbRead, pathMotor)) {
+    Firebase.setString(fbWrite, pathMotor, "OFF");
+  }
+
+  if (!Firebase.getInt(fbRead, pathSmhome)) {
+    Firebase.setInt(fbWrite, pathSmhome, 0);
+  }
+}
+
 void applyLed() {
-  relayWrite(LED_PIN, ledCmd == "ON");
+  outputWrite(LED_PIN, ledCmd == "ON", LED_ACTIVE_LOW);
 }
 
 void applyMotor() {
   // Manual command has priority when ON.
   if (motorCmd == "ON") {
-    relayWrite(MOTOR_PIN, true);
+    outputWrite(MOTOR_PIN, true, MOTOR_ACTIVE_LOW);
     return;
   }
 
   // Otherwise auto mode by threshold.
   if (threshold > 0 && currentMoisture <= threshold) {
-    relayWrite(MOTOR_PIN, true);
+    outputWrite(MOTOR_PIN, true, MOTOR_ACTIVE_LOW);
   } else {
-    relayWrite(MOTOR_PIN, false);
+    outputWrite(MOTOR_PIN, false, MOTOR_ACTIVE_LOW);
   }
 }
 
 void applySmhome() {
-  relayWrite(CH1_PIN, (smHomeMask & (1 << 0)) != 0);
-  relayWrite(CH2_PIN, (smHomeMask & (1 << 1)) != 0);
-  relayWrite(CH3_PIN, (smHomeMask & (1 << 2)) != 0);
-  relayWrite(CH4_PIN, (smHomeMask & (1 << 3)) != 0);
-  relayWrite(CH5_PIN, (smHomeMask & (1 << 4)) != 0);
-  relayWrite(CH6_PIN, (smHomeMask & (1 << 5)) != 0);
+  outputWrite(CH1_PIN, (smHomeMask & (1 << 0)) != 0, CH_ACTIVE_LOW);
+  outputWrite(CH2_PIN, (smHomeMask & (1 << 1)) != 0, CH_ACTIVE_LOW);
+  outputWrite(CH3_PIN, (smHomeMask & (1 << 2)) != 0, CH_ACTIVE_LOW);
+  outputWrite(CH4_PIN, (smHomeMask & (1 << 3)) != 0, CH_ACTIVE_LOW);
+  outputWrite(CH5_PIN, (smHomeMask & (1 << 4)) != 0, CH_ACTIVE_LOW);
+  outputWrite(CH6_PIN, (smHomeMask & (1 << 5)) != 0, CH_ACTIVE_LOW);
 }
 
 void setup() {
@@ -189,6 +226,8 @@ void setup() {
 
   Firebase.begin(&firebaseConfig, &firebaseAuth);
   Firebase.reconnectWiFi(true);
+
+  ensureControlDefaults();
 
   // Initial read/write so dashboard gets immediate state.
   writeSoilMoisture();

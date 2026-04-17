@@ -1,6 +1,6 @@
-import { getApp, getApps, initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getDatabase } from 'firebase/database';
+import { FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
+import { Auth, getAuth } from 'firebase/auth';
+import { Database, getDatabase } from 'firebase/database';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -12,7 +12,26 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+let appInstance: FirebaseApp | null = null;
+let authInstance: Auth | null = null;
+let dbInstance: Database | null = null;
 
-export const auth = getAuth(app);
-export const db = getDatabase(app);
+export function getFirebaseServices() {
+  if (!firebaseConfig.apiKey) {
+    throw new Error('Missing NEXT_PUBLIC_FIREBASE_API_KEY. Check your .env.local in Vercel/project envs.');
+  }
+
+  if (!appInstance) {
+    appInstance = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  }
+
+  if (!authInstance) {
+    authInstance = getAuth(appInstance);
+  }
+
+  if (!dbInstance) {
+    dbInstance = getDatabase(appInstance);
+  }
+
+  return { app: appInstance, auth: authInstance, db: dbInstance };
+}
