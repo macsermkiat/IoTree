@@ -23,13 +23,19 @@ const DEFAULT_PATHS: PathConfig = {
   controlRoot: '/plants/plant/control',
 };
 
-const CANDIDATE_PATHS: PathConfig[] = [
-  DEFAULT_PATHS,
-  { soilPath: '/plants/plant1/sensors/soilMoisture', controlRoot: '/plants/plant1/control' },
-  { soilPath: '/Plant1/Sensor/soilMoisture', controlRoot: '/Plant1/control' },
-  { soilPath: '/Plant1/Sensor', controlRoot: '/Plant1/control' },
-  { soilPath: '/Plant1/sensors/soilMoisture', controlRoot: '/Plant1/control' },
-  { soilPath: '/plant1/sensors/soilMoisture', controlRoot: '/plant1/control' },
+const CANDIDATE_SOIL_PATHS = [
+  '/plants/plant/sensors/soilMoisture',
+  '/plants/plant/Sensor/soilMoisture',
+  '/plants/plant/Sensor',
+  '/plants/plant1/sensors/soilMoisture',
+  '/plants/plant1/Sensor/soilMoisture',
+  '/plants/plant1/Sensor',
+  '/Plant1/Sensor/soilMoisture',
+  '/Plant1/Sensor',
+  '/Plant1/sensors/soilMoisture',
+  '/plant1/sensors/soilMoisture',
+  '/plant1/Sensor/soilMoisture',
+  '/plant1/Sensor',
 ];
 
 function withTimeout<T>(promise: Promise<T>, label: string, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
@@ -93,10 +99,24 @@ async function ensureAuthenticated(auth: Auth) {
 }
 
 async function detectPaths(db: Database): Promise<PathConfig> {
-  for (const candidate of CANDIDATE_PATHS) {
-    const soilSnapshot = await withTimeout(get(ref(db, candidate.soilPath)), `Read ${candidate.soilPath}`);
+  for (const soilPath of CANDIDATE_SOIL_PATHS) {
+    const soilSnapshot = await withTimeout(get(ref(db, soilPath)), `Read ${soilPath}`);
     if (soilSnapshot.exists()) {
-      return candidate;
+      const basePath = soilPath.replace(/\/(sensors|Sensor)(\/soilMoisture)?$/, '');
+      const lowerControl = `${basePath}/control`;
+      const upperControl = `${basePath}/Control`;
+
+      const [lowerSnap, upperSnap] = await Promise.all([
+        withTimeout(get(ref(db, lowerControl)), `Read ${lowerControl}`),
+        withTimeout(get(ref(db, upperControl)), `Read ${upperControl}`),
+      ]);
+
+      if (lowerSnap.exists()) return { soilPath, controlRoot: lowerControl };
+      if (upperSnap.exists()) return { soilPath, controlRoot: upperControl };
+
+      // If no control node exists yet, follow casing style of the sensor node.
+      if (soilPath.includes('/Sensor')) return { soilPath, controlRoot: upperControl };
+      return { soilPath, controlRoot: lowerControl };
     }
   }
 

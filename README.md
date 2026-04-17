@@ -62,6 +62,7 @@ Expected values in Realtime Database:
 Legacy compatibility:
 
 - If your existing tree is `Plant1/Sensor` (capitalized/singular), the web app auto-detects it and maps controls to `Plant1/control`.
+- If your existing tree uses `Sensor`/`Control` capitalized node names, the web app auto-detects that casing and writes to the matching control node.
 - If your existing tree is `/plants/plant/...`, the web app auto-detects and uses `/plants/plant/control`.
 - If no control node exists yet, use **Initialize Firebase Paths** in the dashboard to create default control values.
 
