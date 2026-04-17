@@ -12,6 +12,7 @@ import { Database, get, onValue, ref, set, update } from 'firebase/database';
 import { getFirebaseServices } from '@/lib/firebase';
 
 const REQUEST_TIMEOUT_MS = 10000;
+const ROOT_PATH = '/plants/plant';
 
 interface PathConfig {
   soilPath: string;
@@ -19,8 +20,8 @@ interface PathConfig {
 }
 
 const DEFAULT_PATHS: PathConfig = {
-  soilPath: '/plants/plant/sensors/soilMoisture',
-  controlRoot: '/plants/plant/control',
+  soilPath: `${ROOT_PATH}/sensors/soilMoisture`,
+  controlRoot: `${ROOT_PATH}/control`,
 };
 
 const CANDIDATE_SOIL_PATHS = [
