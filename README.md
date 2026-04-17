@@ -90,3 +90,20 @@ Bit positions for SmartHome channels:
 5. Do **not** set Output Directory to `public`; Next.js deploys using `.next` output handled by the Next.js runtime.
 
 This repo includes `vercel.json` to force Next.js framework detection and avoid incorrect static output-directory checks.
+
+
+## ESP8266 Firmware (for this dashboard)
+
+A compatible sketch is included at:
+
+- `firmware/esp8266_iotree.ino`
+
+It is aligned with this web app contract:
+
+- Writes moisture percentage number to `/plants/plant1/sensors/soilMoisture`
+- Reads threshold number from `/plants/plant1/control/value`
+- Reads `"ON" | "OFF"` from `/plants/plant1/control/LED`
+- Reads `"ON" | "OFF"` from `/plants/plant1/control/motor`
+- Reads 6-channel bitmask integer from `/plants/plant1/control/SMhome`
+
+> Note: The sketch assumes active-low relay modules (LOW = ON, HIGH = OFF).
