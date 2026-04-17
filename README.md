@@ -107,3 +107,24 @@ It is aligned with this web app contract:
 - Reads 6-channel bitmask integer from `/plants/plant1/control/SMhome`
 
 > Note: The sketch assumes active-low relay modules (LOW = ON, HIGH = OFF).
+
+
+## Troubleshooting: Dashboard not receiving data / controls not working
+
+If the dashboard loads but cannot read/write Firebase values (for example LED toggle does nothing), check these first:
+
+1. **Auth + Rules mismatch**
+   - This app now signs in using Firebase Auth on the client.
+   - If `NEXT_PUBLIC_FIREBASE_AUTH_EMAIL` and `NEXT_PUBLIC_FIREBASE_AUTH_PASSWORD` are set, it uses email/password.
+   - Otherwise it uses anonymous auth.
+   - Your Realtime Database rules must allow whichever auth method you use.
+
+2. **Database URL and region**
+   - Ensure `NEXT_PUBLIC_FIREBASE_DATABASE_URL` points to the exact RTDB instance your ESP8266 writes to.
+
+3. **Path contract**
+   - Device writes: `/plants/plant1/sensors/soilMoisture` (number 0-100)
+   - Dashboard writes controls under `/plants/plant1/control/*`
+
+4. **Firmware credentials**
+   - ESP8266 Firebase user/project and web app Firebase project must be the same project.

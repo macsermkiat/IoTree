@@ -18,6 +18,7 @@ export default function HomePage() {
     error,
     lastUpdated,
     smartChannels,
+    isAuthenticated,
     writeThreshold,
     writeLed,
     writeMotor,
@@ -76,6 +77,9 @@ export default function HomePage() {
         <p className="mt-2 text-sm text-slate-500">
           Last updated:{' '}
           {lastUpdated ? lastUpdated.toLocaleString() : 'Waiting for first Firebase payload...'}
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
+          Firebase session: {isAuthenticated ? 'authenticated' : 'not authenticated yet'}
         </p>
       </header>
 
