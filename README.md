@@ -106,7 +106,9 @@ It is aligned with this web app contract:
 - Reads `"ON" | "OFF"` from `/plants/plant1/control/motor`
 - Reads 6-channel bitmask integer from `/plants/plant1/control/SMhome`
 
-> Note: The sketch assumes active-low relay modules (LOW = ON, HIGH = OFF).
+> Note: Output polarity is configurable in firmware using:
+> `MOTOR_ACTIVE_LOW`, `LED_ACTIVE_LOW`, and `CH_ACTIVE_LOW`.
+> If dashboard toggle changes Firebase but hardware does not switch, check these flags first.
 
 
 ## Troubleshooting: Dashboard not receiving data / controls not working
@@ -131,6 +133,10 @@ If the dashboard loads but cannot read/write Firebase values (for example LED to
 5. **Requests hanging / UI stuck on initializing**
    - The dashboard now times out Firebase requests after ~10 seconds and shows the timeout message.
    - If you see timeout errors, check network access, Firebase rules, and auth method.
+6. **LED toggle updates in Firebase but LED stays OFF**
+   - Verify `LED_PIN` wiring and common ground.
+   - In firmware, set `LED_ACTIVE_LOW` correctly for your driver board.
+   - If using built-in ESP8266 LED, logic is often active-low.
 
 
 ## Quick Verification (5 minutes)
