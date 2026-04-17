@@ -13,6 +13,9 @@
 #define USER_PASSWORD "YOUR_FIREBASE_USER_PASSWORD"
 
 const String PLANT_ID = "plant1";
+// If your existing Firebase tree is `plant1/...` (without `/plants/`),
+// keep this as "/plant1". Change to "/plants/plant1" if needed.
+const String FIREBASE_BASE_PATH = "/plant1";
 
 // -------------------- Firebase --------------------
 FirebaseConfig firebaseConfig;
@@ -54,7 +57,7 @@ String ledCmd = "OFF";
 String motorCmd = "OFF";
 int smHomeMask = 0;
 
-const String BASE_PATH = "/plants/" + PLANT_ID;
+const String BASE_PATH = FIREBASE_BASE_PATH;
 
 void outputWrite(uint8_t pin, bool on, bool activeLow) {
   if (activeLow) {
@@ -135,6 +138,30 @@ void readSmhomeMask() {
   }
 }
 
+void ensureControlDefaults() {
+  String controlRoot = BASE_PATH + "/control";
+  String pathValue = controlRoot + "/value";
+  String pathLed = controlRoot + "/LED";
+  String pathMotor = controlRoot + "/motor";
+  String pathSmhome = controlRoot + "/SMhome";
+
+  if (!Firebase.getFloat(fbRead, pathValue)) {
+    Firebase.setFloat(fbWrite, pathValue, 40);
+  }
+
+  if (!Firebase.getString(fbRead, pathLed)) {
+    Firebase.setString(fbWrite, pathLed, "OFF");
+  }
+
+  if (!Firebase.getString(fbRead, pathMotor)) {
+    Firebase.setString(fbWrite, pathMotor, "OFF");
+  }
+
+  if (!Firebase.getInt(fbRead, pathSmhome)) {
+    Firebase.setInt(fbWrite, pathSmhome, 0);
+  }
+}
+
 void applyLed() {
   outputWrite(LED_PIN, ledCmd == "ON", LED_ACTIVE_LOW);
 }
@@ -199,6 +226,8 @@ void setup() {
 
   Firebase.begin(&firebaseConfig, &firebaseAuth);
   Firebase.reconnectWiFi(true);
+
+  ensureControlDefaults();
 
   // Initial read/write so dashboard gets immediate state.
   writeSoilMoisture();

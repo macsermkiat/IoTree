@@ -111,6 +111,11 @@ It is aligned with this web app contract:
 - Reads `"ON" | "OFF"` from `/plants/plant1/control/motor`
 - Reads 6-channel bitmask integer from `/plants/plant1/control/SMhome`
 
+Firmware note:
+
+- The included firmware currently defaults to `FIREBASE_BASE_PATH = "/plant1"` so it matches setups where data appears under `plant1/sensors/...`.
+- It auto-creates missing control keys on boot (`value`, `LED`, `motor`, `SMhome`) if they are absent.
+
 > Note: Output polarity is configurable in firmware using:
 > `MOTOR_ACTIVE_LOW`, `LED_ACTIVE_LOW`, and `CH_ACTIVE_LOW`.
 > If dashboard toggle changes Firebase but hardware does not switch, check these flags first.
@@ -142,6 +147,9 @@ If the dashboard loads but cannot read/write Firebase values (for example LED to
    - Verify `LED_PIN` wiring and common ground.
    - In firmware, set `LED_ACTIVE_LOW` correctly for your driver board.
    - If using built-in ESP8266 LED, logic is often active-low.
+7. **Only `plant1/sensors/*` keeps updating repeatedly**
+   - This is expected for live telemetry (`soilMoisture` + timestamp every interval).
+   - If `control` is missing, reboot ESP8266 once after flashing latest firmware; it now auto-creates control keys.
 
 
 ## Quick Verification (5 minutes)
