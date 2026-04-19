@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { DashboardCard } from '@/components/dashboard-card';
+import { TimelineChart } from '@/components/timeline-chart';
 import { ErrorPanel, LoadingPanel } from '@/components/state-panels';
 import { ProgressBar } from '@/components/progress-bar';
 import { StatusBadge } from '@/components/status-badge';
@@ -26,14 +27,53 @@ export default function HomePage() {
     writeMotor,
     toggleSmartChannel,
     initializeDefaults,
+    soilHistory,
   } = usePlantDashboard();
 
   const [thresholdInput, setThresholdInput] = useState(threshold);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
   const [actionLabel, setActionLabel] = useState<string | null>(null);
+  const [timelineWindowHours, setTimelineWindowHours] = useState<24 | 48>(24);
 
   const humidityLabel = useMemo(() => `${Math.max(0, Math.min(100, soilMoisture)).toFixed(0)}%`, [soilMoisture]);
+
+  const timelineData = useMemo(() => {
+    const now = Date.now();
+    const windowStart = now - timelineWindowHours * 60 * 60 * 1000;
+    const binCount = timelineWindowHours;
+
+    const bins = Array.from({ length: binCount }, (_, index) => {
+      const start = windowStart + index * 60 * 60 * 1000;
+      const end = start + 60 * 60 * 1000;
+      const inBin = soilHistory.filter((sample) => sample.timestamp >= start && sample.timestamp < end);
+
+      const average = inBin.length
+        ? inBin.reduce((acc, sample) => acc + sample.value, 0) / inBin.length
+        : NaN;
+
+      const label = new Date(start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      return {
+        label,
+        value: average,
+      };
+    });
+
+    return bins.map((bin) => {
+      if (!Number.isFinite(bin.value)) {
+        return {
+          ...bin,
+          value: null,
+        };
+      }
+
+      return {
+        ...bin,
+        value: Math.max(0, Math.min(100, bin.value)),
+      };
+    });
+  }, [soilHistory, timelineWindowHours]);
 
   useEffect(() => {
     setThresholdInput(threshold);
@@ -167,6 +207,42 @@ export default function HomePage() {
               />
             ))}
           </div>
+        </DashboardCard>
+
+        <DashboardCard
+          title="Soil Moisture Timeline"
+          subtitle="60-minute bins for the last 1-2 days"
+          action={
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setTimelineWindowHours(24)}
+                className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${
+                  timelineWindowHours === 24
+                    ? 'bg-brand-500 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                1 Day
+              </button>
+              <button
+                type="button"
+                onClick={() => setTimelineWindowHours(48)}
+                className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${
+                  timelineWindowHours === 48
+                    ? 'bg-brand-500 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                2 Days
+              </button>
+            </div>
+          }
+        >
+          <TimelineChart data={timelineData} />
+          <p className="mt-2 text-xs text-slate-500">
+            Timeline bins are averaged every 60 minutes and stored in your browser for up to 48 hours.
+          </p>
         </DashboardCard>
 
         <DashboardCard title="Connection / Debug" subtitle="Quick checks if dashboard seems empty">
