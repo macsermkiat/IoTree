@@ -9,6 +9,7 @@ import {
   signInWithEmailAndPassword,
 } from 'firebase/auth';
 import { Database, get, onValue, ref, set, update } from 'firebase/database';
+
 import { getFirebaseServices } from '@/lib/firebase';
 
 const REQUEST_TIMEOUT_MS = 10000;
@@ -61,6 +62,21 @@ function parseSoilMoistureValue(raw: unknown): number {
   }
 
   return 0;
+}
+
+interface MoistureSample {
+  timestamp: number;
+  value: number;
+}
+
+const HISTORY_STORAGE_KEY = 'iotree-soil-history-v1';
+const HISTORY_RETENTION_MS = 48 * 60 * 60 * 1000;
+
+function sanitizeHistory(history: MoistureSample[]): MoistureSample[] {
+  const cutoff = Date.now() - HISTORY_RETENTION_MS;
+  return history
+    .filter((item) => Number.isFinite(item.timestamp) && Number.isFinite(item.value) && item.timestamp >= cutoff)
+    .slice(-4000);
 }
 
 interface DashboardState {
@@ -133,6 +149,7 @@ export function usePlantDashboard() {
   const [db, setDb] = useState<Database | null>(null);
   const [auth, setAuth] = useState<Auth | null>(null);
   const [paths, setPaths] = useState<PathConfig>(DEFAULT_PATHS);
+  const [soilHistory, setSoilHistory] = useState<MoistureSample[]>([]);
 
   useEffect(() => {
     try {
@@ -144,6 +161,25 @@ export function usePlantDashboard() {
       setError(serviceError instanceof Error ? serviceError.message : 'Failed to initialize Firebase services.');
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const cached = window.localStorage.getItem(HISTORY_STORAGE_KEY);
+      if (!cached) return;
+      const parsed = JSON.parse(cached) as MoistureSample[];
+      setSoilHistory(sanitizeHistory(parsed));
+    } catch {
+      setSoilHistory([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(sanitizeHistory(soilHistory)));
+  }, [soilHistory]);
 
   useEffect(() => {
     if (!auth) return;
@@ -215,7 +251,17 @@ export function usePlantDashboard() {
         refs.soilMoisture,
         (snapshot) => {
           const value = parseSoilMoistureValue(snapshot.val());
-          setState((prev) => ({ ...prev, soilMoisture: Number.isNaN(value) ? 0 : value }));
+          const safeValue = Number.isNaN(value) ? 0 : value;
+          setState((prev) => ({ ...prev, soilMoisture: safeValue }));
+          setSoilHistory((prev) =>
+            sanitizeHistory([
+              ...prev,
+              {
+                timestamp: Date.now(),
+                value: safeValue,
+              },
+            ])
+          );
           markUpdated();
         },
         () => {
@@ -355,6 +401,7 @@ export function usePlantDashboard() {
     isAuthenticated: Boolean(authUser),
     detectedSoilPath: paths.soilPath,
     detectedControlRoot: paths.controlRoot,
+    soilHistory,
     smartChannels,
     writeThreshold,
     writeLed,
