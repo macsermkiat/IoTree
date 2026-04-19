@@ -60,20 +60,20 @@ export default function HomePage() {
       };
     });
 
-    let previousValue = Number.isFinite(soilMoisture) ? soilMoisture : 0;
-
     return bins.map((bin) => {
-      if (Number.isFinite(bin.value)) {
-        previousValue = bin.value;
-        return { ...bin, value: Math.max(0, Math.min(100, bin.value)) };
+      if (!Number.isFinite(bin.value)) {
+        return {
+          ...bin,
+          value: null,
+        };
       }
 
       return {
         ...bin,
-        value: Math.max(0, Math.min(100, previousValue)),
+        value: Math.max(0, Math.min(100, bin.value)),
       };
     });
-  }, [soilHistory, soilMoisture, timelineWindowHours]);
+  }, [soilHistory, timelineWindowHours]);
 
   useEffect(() => {
     setThresholdInput(threshold);

@@ -178,7 +178,11 @@ export function usePlantDashboard() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(sanitizeHistory(soilHistory)));
+    try {
+      window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(sanitizeHistory(soilHistory)));
+    } catch {
+      // Ignore storage failures (privacy mode/quota/security restrictions).
+    }
   }, [soilHistory]);
 
   useEffect(() => {

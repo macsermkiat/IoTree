@@ -1,6 +1,6 @@
 interface TimelinePoint {
   label: string;
-  value: number;
+  value: number | null;
 }
 
 interface TimelineChartProps {
@@ -14,7 +14,9 @@ export function TimelineChart({ data, min = 0, max = 100 }: TimelineChartProps) 
   const height = 240;
   const padding = 28;
 
-  if (!data.length) {
+  const hasMeasuredPoint = data.some((point) => point.value !== null);
+
+  if (!data.length || !hasMeasuredPoint) {
     return (
       <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
         No timeline data yet. Keep this dashboard open to build a 60-minute binned history.
@@ -26,14 +28,34 @@ export function TimelineChart({ data, min = 0, max = 100 }: TimelineChartProps) 
 
   const points = data.map((point, index) => {
     const x = padding + (index / Math.max(1, data.length - 1)) * (width - padding * 2);
+
+    if (point.value === null) {
+      return { ...point, x, y: null as number | null };
+    }
+
     const normalized = (point.value - min) / span;
     const y = height - padding - normalized * (height - padding * 2);
     return { ...point, x, y };
   });
 
-  const path = points
-    .map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x.toFixed(1)},${point.y.toFixed(1)}`)
-    .join(' ');
+  const segments: string[] = [];
+  let currentSegment = '';
+
+  points.forEach((point) => {
+    if (point.y === null) {
+      if (currentSegment) {
+        segments.push(currentSegment.trim());
+        currentSegment = '';
+      }
+      return;
+    }
+
+    currentSegment += `${currentSegment ? ' L' : 'M'}${point.x.toFixed(1)},${point.y.toFixed(1)}`;
+  });
+
+  if (currentSegment) {
+    segments.push(currentSegment.trim());
+  }
 
   return (
     <div className="space-y-3">
@@ -54,17 +76,28 @@ export function TimelineChart({ data, min = 0, max = 100 }: TimelineChartProps) 
             );
           })}
 
-          <path d={path} fill="none" stroke="#0D9488" strokeWidth="2.5" strokeLinecap="round" />
-
-          {points.map((point, index) => (
-            <circle key={`${point.label}-${index}`} cx={point.x} cy={point.y} r="2.5" fill="#14B8A6" />
+          {segments.map((segment, index) => (
+            <path
+              key={`segment-${index}`}
+              d={segment}
+              fill="none"
+              stroke="#0D9488"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
           ))}
+
+          {points.map((point, index) =>
+            point.y === null ? null : (
+              <circle key={`${point.label}-${index}`} cx={point.x} cy={point.y} r="2.5" fill="#14B8A6" />
+            )
+          )}
         </svg>
       </div>
 
       <div className="grid grid-cols-3 gap-2 text-xs text-slate-500 sm:grid-cols-6">
-        {data.filter((_, index) => index % Math.max(1, Math.floor(data.length / 6)) === 0).map((point) => (
-          <div key={point.label} className="truncate rounded-lg bg-slate-100 px-2 py-1 text-center">
+        {data.filter((_, index) => index % Math.max(1, Math.floor(data.length / 6)) === 0).map((point, index) => (
+          <div key={`${point.label}-${index}`} className="truncate rounded-lg bg-slate-100 px-2 py-1 text-center">
             {point.label}
           </div>
         ))}
