@@ -60,25 +60,11 @@ export default function HomePage() {
       };
     });
 
-    let seenMeasuredValue = false;
-    let previousValue: number | null = null;
-
     return bins.map((bin) => {
       if (Number.isFinite(bin.value)) {
-        const clamped = Math.max(0, Math.min(100, bin.value));
-        seenMeasuredValue = true;
-        previousValue = clamped;
-
         return {
           ...bin,
-          value: clamped,
-        };
-      }
-
-      if (seenMeasuredValue && previousValue !== null) {
-        return {
-          ...bin,
-          value: previousValue,
+          value: Math.max(0, Math.min(100, bin.value)),
         };
       }
 
