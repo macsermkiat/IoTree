@@ -38,24 +38,35 @@ export function TimelineChart({ data, min = 0, max = 100 }: TimelineChartProps) 
     return { ...point, x, y };
   });
 
-  const segments: string[] = [];
-  let currentSegment = '';
+  const segments: Array<Array<{ x: number; y: number }>> = [];
+  let currentSegment: Array<{ x: number; y: number }> = [];
 
   points.forEach((point) => {
     if (point.y === null) {
-      if (currentSegment) {
-        segments.push(currentSegment.trim());
-        currentSegment = '';
+      if (currentSegment.length) {
+        segments.push(currentSegment);
+        currentSegment = [];
       }
       return;
     }
 
-    currentSegment += `${currentSegment ? ' L' : 'M'}${point.x.toFixed(1)},${point.y.toFixed(1)}`;
+    currentSegment.push({ x: point.x, y: point.y });
   });
 
-  if (currentSegment) {
-    segments.push(currentSegment.trim());
+  if (currentSegment.length) {
+    segments.push(currentSegment);
   }
+
+  const segmentPaths = segments.map((segment) => {
+    if (segment.length === 1) {
+      const only = segment[0];
+      return `M${(only.x - 3).toFixed(1)},${only.y.toFixed(1)} L${(only.x + 3).toFixed(1)},${only.y.toFixed(1)}`;
+    }
+
+    return segment
+      .map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x.toFixed(1)},${point.y.toFixed(1)}`)
+      .join(' ');
+  });
 
   return (
     <div className="space-y-3">
@@ -76,7 +87,7 @@ export function TimelineChart({ data, min = 0, max = 100 }: TimelineChartProps) 
             );
           })}
 
-          {segments.map((segment, index) => (
+          {segmentPaths.map((segment, index) => (
             <path
               key={`segment-${index}`}
               d={segment}

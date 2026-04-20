@@ -61,16 +61,16 @@ export default function HomePage() {
     });
 
     return bins.map((bin) => {
-      if (!Number.isFinite(bin.value)) {
+      if (Number.isFinite(bin.value)) {
         return {
           ...bin,
-          value: null,
+          value: Math.max(0, Math.min(100, bin.value)),
         };
       }
 
       return {
         ...bin,
-        value: Math.max(0, Math.min(100, bin.value)),
+        value: null,
       };
     });
   }, [soilHistory, timelineWindowHours]);

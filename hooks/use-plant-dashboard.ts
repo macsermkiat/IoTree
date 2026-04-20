@@ -71,12 +71,28 @@ interface MoistureSample {
 
 const HISTORY_STORAGE_KEY = 'iotree-soil-history-v1';
 const HISTORY_RETENTION_MS = 48 * 60 * 60 * 1000;
+const HISTORY_BUCKET_MS = 60 * 60 * 1000;
+const HISTORY_SAFE_BUCKET_CAP = 72;
+
+function getBucketTimestamp(timestamp: number): number {
+  return Math.floor(timestamp / HISTORY_BUCKET_MS) * HISTORY_BUCKET_MS;
+}
 
 function sanitizeHistory(history: MoistureSample[]): MoistureSample[] {
   const cutoff = Date.now() - HISTORY_RETENTION_MS;
-  return history
+  const bucketed = new Map<number, number>();
+
+  history
     .filter((item) => Number.isFinite(item.timestamp) && Number.isFinite(item.value) && item.timestamp >= cutoff)
-    .slice(-4000);
+    .sort((a, b) => a.timestamp - b.timestamp)
+    .forEach((item) => {
+      bucketed.set(getBucketTimestamp(item.timestamp), item.value);
+    });
+
+  return Array.from(bucketed.entries())
+    .sort(([left], [right]) => left - right)
+    .slice(-HISTORY_SAFE_BUCKET_CAP)
+    .map(([timestamp, value]) => ({ timestamp, value }));
 }
 
 interface DashboardState {
@@ -257,15 +273,20 @@ export function usePlantDashboard() {
           const value = parseSoilMoistureValue(snapshot.val());
           const safeValue = Number.isNaN(value) ? 0 : value;
           setState((prev) => ({ ...prev, soilMoisture: safeValue }));
-          setSoilHistory((prev) =>
-            sanitizeHistory([
-              ...prev,
-              {
-                timestamp: Date.now(),
-                value: safeValue,
-              },
-            ])
-          );
+          setSoilHistory((prev) => {
+            const now = Date.now();
+            const bucketTimestamp = getBucketTimestamp(now);
+            const existingIndex = prev.findIndex((sample) => sample.timestamp === bucketTimestamp);
+
+            const nextHistory = [...prev];
+            if (existingIndex >= 0) {
+              nextHistory[existingIndex] = { timestamp: bucketTimestamp, value: safeValue };
+            } else {
+              nextHistory.push({ timestamp: bucketTimestamp, value: safeValue });
+            }
+
+            return sanitizeHistory(nextHistory);
+          });
           markUpdated();
         },
         () => {
