@@ -167,18 +167,14 @@ void applyLed() {
 }
 
 void applyMotor() {
-  // Manual command has priority when ON.
-  if (motorCmd == "ON") {
-    outputWrite(MOTOR_PIN, true, MOTOR_ACTIVE_LOW);
+  // Dashboard contract is explicit ON/OFF control for the pump.
+  // Keep AUTO-by-threshold only as an opt-in fallback when `motor` is set to "AUTO".
+  if (motorCmd == "AUTO") {
+    outputWrite(MOTOR_PIN, threshold > 0 && currentMoisture <= threshold, MOTOR_ACTIVE_LOW);
     return;
   }
 
-  // Otherwise auto mode by threshold.
-  if (threshold > 0 && currentMoisture <= threshold) {
-    outputWrite(MOTOR_PIN, true, MOTOR_ACTIVE_LOW);
-  } else {
-    outputWrite(MOTOR_PIN, false, MOTOR_ACTIVE_LOW);
-  }
+  outputWrite(MOTOR_PIN, motorCmd == "ON", MOTOR_ACTIVE_LOW);
 }
 
 void applySmhome() {
