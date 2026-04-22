@@ -111,6 +111,7 @@ It is aligned with this web app contract:
 - Reads threshold number from `/plants/plant/control/value`
 - Reads `"ON" | "OFF"` from `/plants/plant/control/LED`
 - Reads `"ON" | "OFF"` from `/plants/plant/control/motor`
+  - Optional: `"AUTO"` to enable threshold-based pump behavior
 - Reads 6-channel bitmask integer from `/plants/plant/control/SMhome`
 
 Firmware note:
