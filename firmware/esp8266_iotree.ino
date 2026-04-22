@@ -168,12 +168,6 @@ void applyLed() {
 
 void applyMotor() {
   // Dashboard contract is explicit ON/OFF control for the pump.
-  // Keep AUTO-by-threshold only as an opt-in fallback when `motor` is set to "AUTO".
-  if (motorCmd == "AUTO") {
-    outputWrite(MOTOR_PIN, threshold > 0 && currentMoisture <= threshold, MOTOR_ACTIVE_LOW);
-    return;
-  }
-
   outputWrite(MOTOR_PIN, motorCmd == "ON", MOTOR_ACTIVE_LOW);
 }
 
